@@ -59,3 +59,7 @@ See you there and thanks for helping to improve Bolt for everyone!
 [3]: https://slack.dev/bolt-python/tutorial/getting-started#setting-up-events
 [4]: https://github.com/slackapi/bolt-python/issues/new/choose
 [5]: https://github.com/slackapi/bolt-python/tree/main/examples
+
+# linkguard
+Slack bot built for Converge, warns users about suspicious links
+
