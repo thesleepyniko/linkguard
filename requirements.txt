@@ -1,3 +1,6 @@
 slack-bolt
 slack-cli-hooks<1.0.0
 dotenv
+google-cloud-webrisk
+sqlalchemy
+httpx
