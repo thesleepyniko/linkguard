@@ -220,3 +220,5 @@ __marimo__/
 .slack/
 
 slackurldetect-ccfa4e5adaf9.json
+webrisk.db
+wba.json

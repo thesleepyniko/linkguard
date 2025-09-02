@@ -24,10 +24,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 webrisk_manager_instance = None # intialize first
 
-URL_PATTERN = re.compile(r"""
-    (?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@
-    )))
-""", re.IGNORECASE | re.VERBOSE) # yea this is pretty long, sorry...
+# URL_PATTERN = re.compile(r"""
+#     (?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@
+#     )))
+# """, re.IGNORECASE | re.VERBOSE) # yea this is pretty long, sorry...
 
 class WebRiskAPICaller:
     DB_NAME = 'webrisk.db'
@@ -91,35 +91,88 @@ class WebRiskAPICaller:
         logger.info(msg=f"Added {hashes_count} to DB while handling RESET response for {list_name}")
         return
     
-    async def _handle_diff_response(self, session: Session, list_name: str, additions: webrisk_v1.ThreatEntryAdditions, has_removal: bool):
-        pass        
+    async def _handle_diff_response(self, session: Session, list_name: str, additions: webrisk_v1.ThreatEntryAdditions, removals: webrisk_v1.ThreatEntryRemovals):
+        hashes_added = 0
+        if additions and additions.raw_hashes:
+            for raw_hashes_obj in additions.raw_hashes:
+                prefix_size = raw_hashes_obj.prefix_size
+    
+    async def update_threat_lists(self):
+        with self.Session() as session:
+            for threat_type in self.THREAT_TYPES_ENUM:
+                metadata = await self._get_threat_list_metadata(session, threat_type.name)
+    
+    def _canonicalize_url(self, url: str) -> str:
+        try:
+            parsed = urllib_parse.urlparse(url.lower().strip())
+            
+            scheme = parsed.scheme or 'http'
+            netloc = parsed.netloc
+            path = parsed.path or '/'
+            
+            if ':80' in netloc and scheme == 'http':
+                netloc = netloc.replace(':80', '')
+            elif ':443' in netloc and scheme == 'https':
+                netloc = netloc.replace(':443', '')
+            
+            if path != '/' and path.endswith('/'):
+                path = path.rstrip('/')
+            
+            canonicalized = f"{scheme}://{netloc}{path}"
+            if parsed.query:
+                canonicalized += f"?{parsed.query}"
+                
+            return canonicalized
+        
+        except Exception as e:
+            logger.warning(f"Error canonicalizing URL {url}: {e}")
+            return url
 
 # Initializes your app with your bot token
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 
-def match_for_url(text):
-    urls=[url.group(0) for url in URL_PATTERN.finditer(text)]
-    if len(urls) == 0 or urls is None:
-        return False
-    for url in urls:
-        pass
+def check_for_urls(element, data=None):
+    if data is None:
+        data = set()
+    logger.info(element)
+    if isinstance(element, list):
+        for element_iter in element:
+            logger.info(f"checking lay1: {element_iter}")
+            if element_iter.get('type', '') == "link":
+                logger.info(f"found link, link is {element_iter.get('url', '')}")
+                data.add(element_iter.get('url', ''))
+            else:
+                logger.info("failed check, recursing")
+                check_for_urls(element_iter, data)
+    elif isinstance(element, dict):
+        logger.info(f"evaluating {element} as dict")
+        if element.get("type", "") == "rich_text" or element.get("type", "") == "rich_text_section":
+            check_for_urls(element.get('elements'), data)
+        elif element.get("type", "") == "rich_text_list":
+            check_for_urls(element.get("items"), data)
+    return list(data)
+        
 
 # Listens to incoming messages that contain "hello"
-@app.message()
-def check_url(message, say):
+@app.message(".*")
+def handle_messages(message, say):
     text = message.get("text", "")
-    if "://" not in text and "." not in text:
-        return
-    else:
-        ret = match_for_url(text)
-        if not ret:
-            return
+    #logger.info(message)
+    if "http" not in text:
+        return 
+    links=check_for_urls(message.get('blocks', []))
+    #if "." not in text:
+    #    return
+    #else:
+    #    ret = match_for_url(text)
+    #    if not ret:
+    #        return
     # say() sends a message to the channel where the event was triggered
     say(
         blocks=[
             {
                 "type": "section",
-                "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>!"},
+                "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! Your message was {text}. I found the following links: {links}"},
                 "accessory": {
                     "type": "button",
                     "text": {"type": "plain_text", "text": "Click Me"},
@@ -129,6 +182,7 @@ def check_url(message, say):
         ],
         text=f"Hey there <@{message['user']}>!",
     )
+
 
 # Start your app
 if __name__ == "__main__":
