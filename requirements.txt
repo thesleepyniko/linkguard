@@ -4,3 +4,4 @@ dotenv
 google-cloud-webrisk
 sqlalchemy
 httpx
+aiohttp

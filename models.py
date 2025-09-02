@@ -6,7 +6,7 @@ Base = declarative_base()
 class ThreatHash(Base):
     __tablename__ = 'threat_hashes'
     hash_prefix = Column(LargeBinary(4), primary_key=True)
-    full_hash = Column(LargeBinary(32), primary_key=True)
+    full_hash = Column(LargeBinary(32))
     threat_type = Column(String, primary_key=True)
 
     def __repr__(self):
