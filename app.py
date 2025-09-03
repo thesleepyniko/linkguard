@@ -5,6 +5,7 @@ import re
 import urllib.parse as urllib_parse
 from datetime import datetime, timedelta
 import hashlib
+import ipaddress
 
 from dotenv import load_dotenv
 from google.cloud import webrisk_v1
@@ -15,19 +16,10 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from models import Base, ListMetadata, ThreatHash
 
-# This sample slack application uses SocketMode
-# For the companion getting started setup guide, 
-# see: https://slack.dev/bolt-python/tutorial/getting-started 
-
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-webrisk_manager_instance = None # intialize first
-
-# URL_PATTERN = re.compile(r"""
-#     (?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@
-#     )))
-# """, re.IGNORECASE | re.VERBOSE) # yea this is pretty long, sorry...
+webrisk_manager_instance = None
 
 class WebRiskAPICaller:
     DB_NAME = 'webrisk.db'
@@ -89,19 +81,17 @@ class WebRiskAPICaller:
         objects=[]
         for raw_hashes_obj in additions.raw_hashes:
             prefix_size = raw_hashes_obj.prefix_size
-            concatenated_hashes_bytes = raw_hashes_obj.raw_hashes 
+            concatenated_hashes_bytes = raw_hashes_obj.raw_hashes
             for i in range(0, len(concatenated_hashes_bytes), prefix_size):
-                individual_hash_bytes = concatenated_hashes_bytes[i : i + prefix_size]
+                individual_hash_bytes = concatenated_hashes_bytes[i:i+prefix_size]
 
-                db_hash_prefix = individual_hash_bytes[:4] # should always be 4 bytes
-                db_full_hash = None
-
-                if len(individual_hash_bytes) == 32:
-                    db_full_hash = individual_hash_bytes
+                db_hash_prefix = individual_hash_bytes                     # <- exact size
+                db_full_hash = individual_hash_bytes if len(individual_hash_bytes) == 32 else None
 
                 objects.append(ThreatHash(
                     threat_type=list_name.upper(),
                     hash_prefix=db_hash_prefix,
+                    prefix_size=prefix_size,
                     full_hash=db_full_hash
                 ))
                 hashes_count += 1
@@ -118,15 +108,16 @@ class WebRiskAPICaller:
                 concatenated_hashes_bytes = raw_hashes_obj.raw_hashes
                 for i in range(0, len(concatenated_hashes_bytes), prefix_size):
                     individual_hash_bytes = concatenated_hashes_bytes[i:i+prefix_size]
-                    db_hash_prefix = individual_hash_bytes[:4]
-                    db_full_hash = None
-                    if len(individual_hash_bytes) == 32:
-                        db_full_hash = individual_hash_bytes
+
+                    db_hash_prefix = individual_hash_bytes                     # <- exact size
+                    db_full_hash = individual_hash_bytes if len(individual_hash_bytes) == 32 else None
+
                     objects.append(ThreatHash(
                         threat_type=list_name.upper(),
                         hash_prefix=db_hash_prefix,
+                        prefix_size=prefix_size,
                         full_hash=db_full_hash
-                    ))
+                     ))
                     hashes_added +=1
         logger.info(msg=f"Added {hashes_added} to DB while handling RESET response for {list_name}")
         session.bulk_save_objects(objects, return_defaults=False)
@@ -205,69 +196,174 @@ class WebRiskAPICaller:
                     session.rollback()
                     continue
 
+    def _normalize_ipv6(self, ip_str: str) -> str | None:
+        try:
+            ip_obj = ipaddress.IPv6Address(ip_str)
+            return ip_obj.exploded
+        except ipaddress.AddressValueError:
+            return None
+
+    def _normalize_ipv4(self, ip_str: str) -> str | None:
+        try:
+            if any(part.startswith('0') and len(part) > 1 for part in ip_str.split('.')):
+                return None
+            ip_obj = ipaddress.IPv4Address(ip_str)
+            return str(ip_obj)
+        except (ipaddress.AddressValueError, ValueError):
+            return None
+
     def _canonicalize_url(self, url: str) -> str:
         try:
-            parsed = urllib_parse.urlparse(url.lower().strip())
-            
-            scheme = parsed.scheme or 'http'
-            netloc = parsed.netloc
+            url = url.strip().replace('\t', '').replace('\r', '').replace('\n', '')
+            url = url.split('#', 1)[0]
+
+            while True:
+                new_url = urllib_parse.unquote(url)
+                if new_url == url:
+                    break
+                url = new_url
+
+            parsed = urllib_parse.urlparse(url)
+            if not parsed.scheme:
+                parsed = urllib_parse.urlparse('http://' + url)
+
+            host = parsed.hostname
+            if not host:
+                return url
+
+            normalized_ip = self._normalize_ipv6(host) or self._normalize_ipv4(host)
+            if normalized_ip:
+                host = normalized_ip
+            else:
+                host = host.lower().strip('.')
+                host = re.sub(r'\.+', '.', host)
+
             path = parsed.path or '/'
-            
-            if ':80' in netloc and scheme == 'http':
-                netloc = netloc.replace(':80', '')
-            elif ':443' in netloc and scheme == 'https':
-                netloc = netloc.replace(':443', '')
-            
-            if path != '/' and path.endswith('/'):
-                path = path.rstrip('/')
-            
-            canonicalized = f"{scheme}://{netloc}{path}"
+            path = re.sub(r'/./', '/', path)
+            path = re.sub(r'//+', '/', path)
+
+            path_segments = path.split('/')
+            new_segments = []
+            for segment in path_segments:
+                if segment == '..':
+                    if len(new_segments) > 1:
+                        new_segments.pop()
+                else:
+                    new_segments.append(segment)
+            path = '/'.join(new_segments)
+            if not path.startswith('/'):
+                path = '/' + path
+
+            canonical_url = host + path
             if parsed.query:
-                canonicalized += f"?{parsed.query}"
+                canonical_url += '?' + parsed.query
             
-            logger.info(f"canonicalized {url} into {canonicalized}")
-            return canonicalized
-        
+            return canonical_url
+
         except Exception as e:
             logger.warning(f"couldnt canonicalize {url}: {e}")
             return url
         
+    def _host_candidates_from_host(self, host: str) -> list[str]:
+        if re.match(r'^\d+\.\d+\.\d+\.\d+$', host) or ':' in host:
+            return [host]
+        
+        labels = host.split('.')
+        candidates = []
+        if len(labels) > 4:
+             labels = labels[-4:]
+
+        for i in range(len(labels)):
+            candidate = '.'.join(labels[i:])
+            if candidate:
+                candidates.append(candidate)
+        
+        if host not in candidates:
+            candidates.append(host)
+
+        return list(dict.fromkeys(candidates))
+
+
+    def _path_candidates_from_path_query(self, path: str, query: str) -> list[str]:
+        candidates = []
+        if path:
+            candidates.append(path)
+            path_segments = path.split('/')
+            if len(path_segments) > 1:
+                for i in range(4, 0, -1):
+                    if len(path_segments) > i:
+                        candidate_path = '/'.join(path_segments[:i])
+                        if candidate_path and candidate_path not in candidates:
+                            candidates.append(candidate_path)
+        
+        candidates.append('/')
+
+        path_with_query_candidates = []
+        for p in candidates:
+            path_with_query_candidates.append(p)
+            if query:
+                path_with_query_candidates.append(f"{p}?{query}")
+
+        return list(dict.fromkeys(path_with_query_candidates))
+
+
+    def _get_url_expressions(self, canonical_url: str) -> list[str]:
+        parsed = urllib_parse.urlparse('http://' + canonical_url)
+        host_candidates = self._host_candidates_from_host(parsed.hostname or '')
+        path_candidates = self._path_candidates_from_path_query(parsed.path, parsed.query)
+        
+        expressions = []
+        for host_candidate in host_candidates:
+            for path_candidate in path_candidates:
+                expressions.append(host_candidate + path_candidate)
+        logger.info(f"Generated {len(expressions)} expressions for {canonical_url}")
+        return expressions
+
     def _compute_url_hashes(self, url: str):
         canonical_url = self._canonicalize_url(url)
+        expressions = self._get_url_expressions(canonical_url)
         
-        # calculate the hash of the canonical url
-        full_hash = hashlib.sha256(canonical_url.encode('utf-8')).digest()
-        
-        # try some different lengths
-        prefixes = []
-        for length in [4, 8, 16, 32]:
-            if length <= len(full_hash):
-                prefixes.append(full_hash[:length])
-        
-        return prefixes, full_hash
+        hashes = set()
+        for expr in expressions:
+            full_hash = hashlib.sha256(expr.encode('utf-8')).digest()
+            hashes.add(full_hash)
+        logger.info(f"Computed {len(hashes)} hashes for {url}")
+        return hashes
+    
     async def check_url_safety(self, url: str):
-        prefixes, full_hash = self._compute_url_hashes(url)
-        
+        hashes = self._compute_url_hashes(url)
+        prefixes = {h[:4] for h in hashes}
+        logger.info(f"Checking {len(prefixes)} prefixes against local DB.")
+
         with self.Session() as session:
             for prefix in prefixes:
-                threat = session.query(ThreatHash).filter(
-                    ThreatHash.hash_prefix == prefix[:4]
-                ).first()
-                
+                threat = session.query(ThreatHash).filter(ThreatHash.hash_prefix == prefix).first()
                 if threat:
-                    if threat.full_hash and threat.full_hash == full_hash: # type: ignore
-                        return {
-                            'is_threat': True,
-                            'threat_type': threat.threat_type,
-                            'url': url,
-                            'match_type': 'full_hash'
-                        } # we found a threat and it had a full hash! lets return some info
-                    elif threat.full_hash is None:
-                        return await self._verify_threat_with_api(url) # we didn't find a threat let's talk to google to find out if its a threat :3
+                    logger.info(f"Prefix match found in DB: {prefix.hex()}")
+                    for full_hash in hashes:
+                        if full_hash.startswith(prefix):
+                            if threat.full_hash is not None and threat.full_hash == full_hash:
+                                logger.info(f"Full hash match found for {prefix.hex()}. Threat confirmed.")
+                                return {
+                                    'is_threat': True,
+                                    'threat_type': threat.threat_type,
+                                    'url': url,
+                                    'match_type': 'full_hash_local'
+                                }
+                    
+                    logger.info(f"Prefix {prefix.hex()} matched, but no full hash match. Verifying with API.")
+                    api_result = await self._verify_threat_with_api(url)
+                    if api_result.get('is_threat'):
+                        api_result['match_type'] = 'api_verification_after_prefix_hit'
+                        return api_result
+
+        logger.info("No threat found in local DB.")
         if self.FORCE_API_ON_MISS:
+            logger.info("Forcing API check on local miss.")
             return await self._verify_threat_with_api(url)
-        else:
-            return {"is_threat": False, "url": url, "match_type": "none"} # indicates that there were no threats found, so it should technically be good
+
+        return {"is_threat": False, "url": url, "match_type": "none"}
+
 
     async def _verify_threat_with_api(self, url: str):
         """Verify threat status directly with Web Risk API"""
@@ -329,20 +425,17 @@ def check_for_urls(element, data=None):
 # Listens to incoming messages that contain "hello"
 @app.message(".*")
 async def handle_messages(message, say):
+    if not webrisk_manager_instance:
+        logger.error("WebRiskAPICaller not initialized, skipping message.")
+        return
+
     text = message.get("text", "")
-    #logger.info(message)
     if "http" not in text:
         return 
     links=check_for_urls(message.get('blocks', []))
-    #if "." not in text:
-    #    return
-    #else:
-    #    ret = match_for_url(text)
-    #    if not ret:
-    #        return
-    # say() sends a message to the channel where the event was triggered
+
     for link in links:
-        result = await WebRiskAPICaller().check_url_safety(link)
+        result = await webrisk_manager_instance.check_url_safety(link)
         logger.info(result)
         if result.get('is_threat', False):
             await say(
@@ -376,9 +469,10 @@ async def handle_messages(message, say):
             )
 
 async def main():
+    global webrisk_manager_instance
     logger.info("Initalizing app.")
     logging.getLogger("slack_sdk").setLevel(logging.DEBUG)
-    webriskapi = WebRiskAPICaller()
+    webrisk_manager_instance = WebRiskAPICaller()
     logger.info("WebRiskAPICaller intialized")
     handler = AsyncSocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     await handler.start_async()
