@@ -442,27 +442,8 @@ async def handle_messages(message, say):
                 blocks=[
                     {
                         "type": "section",
-                        "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! Your message was {text}. I found the following links: {links}. I flagged {result.get('url')} under the category {result.get('threat_types')}"},
-                        "accessory": {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "Click Me"},
-                            "action_id": "button_click",
-                        },
-                    }
-                ],
-                text=f"Hey there <@{message['user']}>!",
-            )
-        else:
-            await say(
-                blocks=[
-                    {
-                        "type": "section",
-                        "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! Your message was {text}. I found the following links: {links}. I did not flag anything!"},
-                        "accessory": {
-                            "type": "button",
-                            "text": {"type": "plain_text", "text": "Click Me"},
-                            "action_id": "button_click",
-                        },
+                        "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! I flagged {result.get('url')} under the category {result.get('threat_types')} in your message! Please exercise caution when clicking said link!"},
+
                     }
                 ],
                 text=f"Hey there <@{message['user']}>!",
