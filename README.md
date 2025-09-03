@@ -1,65 +1,21 @@
-# Getting Started ⚡️ Bolt for Python
-> Slack app example from 📚 [Getting started with Bolt for Python][1]
 
-## Overview
+# LinkGuard
+![](https://bin.phthallo.com/clLUOC.md)
 
-This is a Slack app built with the [Bolt for Python framework][2] that showcases
-responding to events and interactive buttons.
+## What is this?
 
-## Running locally
+Hi! This is a slack bot called LinkGuard. It's primary purpose is to scan for malicious links in channels it has been added to and warn if they're malicious! It's not 100% perfect due to relying on Google WebRiskAPI (and also potentially hitting quota :pf:)
 
-### 1. Setup environment variables
+## Why did you make this?
 
-```zsh
-# Replace with your tokens
-export SLACK_BOT_TOKEN=<your-bot-token>
-export SLACK_APP_TOKEN=<your-app-level-token>
-```
+It was originally for converge, but then I realized even after converge had ended that I really wanted something like this to exist! I also realized that a lot of other platforms do this kind of basic scanning (like Discord iirc), but slack doesn't! So I wanted to implement it!
 
-### 2. Setup your local project
+## How did you make this?
 
-```zsh
-# Clone this project onto your machine
-git clone https://github.com/slackapi/bolt-python-getting-started-app.git
+This project was made fully in python! Specifically, python3! It uses a google API to pull a database that has some prefixes that links are first matched with, and if a match is found, it will then query the API to confirm before giving a result! If you're wondering what I did to learn and implement, mostly documentation reading and trial and error!
 
-# Change into this project
-cd bolt-python-getting-started-app/
+## What'd you struggle with and what'd you learn?
 
-# Setup virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install the dependencies
-pip install -r requirements.txt
-```
-
-### 3. Start servers
-```zsh
-python3 app.py
-```
-
-## More examples
-
-Looking for more examples of Bolt for Python? Browse to [bolt-python/examples/][5] for a long list of usage, server, and deployment code samples!
-
-## Contributing
-
-### Issues and questions
-
-Found a bug or have a question about this project? We'd love to hear from you!
-
-1. Browse to [slackapi/bolt-python/issues][4]
-1. Create a new issue
-1. Mention that you're using this example app
-
-See you there and thanks for helping to improve Bolt for everyone!
-
-[1]: https://slack.dev/bolt-python/tutorial/getting-started
-[2]: https://slack.dev/bolt-python/
-[3]: https://slack.dev/bolt-python/tutorial/getting-started#setting-up-events
-[4]: https://github.com/slackapi/bolt-python/issues/new/choose
-[5]: https://github.com/slackapi/bolt-python/tree/main/examples
-
-# linkguard
-Slack bot built for Converge, warns users about suspicious links
+everything :sob: /silly
+But honestly, mostly making my checking up to spec, as the API is super strict and also you have to hash the links a certian way! Otherwise, it was really smooth and I now love Bolt for Python! I learned a lot of Google API stuff along the way and just general troubleshooting skills :3
 
