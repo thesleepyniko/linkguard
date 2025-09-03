@@ -134,8 +134,8 @@ class WebRiskAPICaller:
                 try:
                     metadata = await self._get_threat_list_metadata(session, threat_type.name)
                     req_constraints = webrisk_v1.ComputeThreatListDiffRequest.Constraints()
-                    req_constraints.max_diff_entries = 16777216
-                    req_constraints.max_database_entries = 16777216
+                    req_constraints.max_diff_entries = 1000000
+                    req_constraints.max_database_entries = 1000000
                     request = webrisk_v1.ComputeThreatListDiffRequest(
                         threat_type=threat_type,
                         constraints=req_constraints,
