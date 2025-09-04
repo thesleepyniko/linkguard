@@ -77,25 +77,38 @@ class WebRiskAPICaller:
     #hoping and praying that this will work
     async def _handle_reset_response(self, session: Session, list_name: str, additions: webrisk_v1.ThreatEntryAdditions):
         session.query(ThreatHash).filter(ThreatHash.threat_type == list_name.upper()).delete(synchronize_session="fetch") # a RST response indicates we must wipe our db and repopulate
+        batch = []
         hashes_count = 0
-        objects=[]
         for raw_hashes_obj in additions.raw_hashes:
             prefix_size = raw_hashes_obj.prefix_size
             concatenated_hashes_bytes = raw_hashes_obj.raw_hashes
+
             for i in range(0, len(concatenated_hashes_bytes), prefix_size):
                 individual_hash_bytes = concatenated_hashes_bytes[i:i+prefix_size]
 
-                db_hash_prefix = individual_hash_bytes                     # <- exact size
+                db_hash_prefix = individual_hash_bytes
                 db_full_hash = individual_hash_bytes if len(individual_hash_bytes) == 32 else None
 
-                objects.append(ThreatHash(
+                batch.append(ThreatHash(
                     threat_type=list_name.upper(),
                     hash_prefix=db_hash_prefix,
                     prefix_size=prefix_size,
                     full_hash=db_full_hash
                 ))
                 hashes_count += 1
-        session.bulk_save_objects(objects, return_defaults=False)
+
+                if len(batch) >= 10000:
+                    session.bulk_save_objects(batch, return_defaults=False)
+                    session.commit()
+                    logger.info(f"Committed {hashes_count} hashes so far for {list_name}")
+                    batch.clear()
+
+        # flush leftovers
+        if batch:
+            session.bulk_save_objects(batch, return_defaults=False)
+            session.commit()
+            logger.info(f"Final commit: {hashes_count} total hashes for {list_name}")
+
         logger.info(msg=f"Added {hashes_count} to DB while handling RESET response for {list_name}")
         return
     
@@ -134,16 +147,16 @@ class WebRiskAPICaller:
                 try:
                     metadata = await self._get_threat_list_metadata(session, threat_type.name)
                     req_constraints = webrisk_v1.ComputeThreatListDiffRequest.Constraints()
-                    req_constraints.max_diff_entries = 1000000
-                    req_constraints.max_database_entries = 1000000
+                    req_constraints.max_diff_entries = 18000000
+                    req_constraints.max_database_entries = 18000000
                     request = webrisk_v1.ComputeThreatListDiffRequest(
                         threat_type=threat_type,
-                        constraints=req_constraints,
+                        constraints=req_constraints
                     )
                     if not metadata:
                         request = webrisk_v1.ComputeThreatListDiffRequest(
                                     threat_type=threat_type,
-                                    constraints=req_constraints,
+                                    constraints=req_constraints
                                 )
                         response = await self.client.compute_threat_list_diff(request=request)
                         if response.response_type == webrisk_v1.ComputeThreatListDiffResponse.ResponseType.RESET:
@@ -165,7 +178,11 @@ class WebRiskAPICaller:
                             if metadata and metadata.version_token: #type: ignore
                                 request.version_token = metadata.version_token #type: ignore
                                 logger.info(f"current version token: {threat_type.name}")
-                                response = await self.client.compute_threat_list_diff(request=request, version_token=metadata.version_token) #type: ignore
+                                request = webrisk_v1.ComputeThreatListDiffRequest(
+                                    threat_type=threat_type,
+                                    constriants=req_constraints,
+                                    version_token=metadata.version_token)
+                                response = await self.client.compute_threat_list_diff(request=request)
                             else:
                                 logger.info(f"no version token for {threat_type.name}, manually triggering a reset")
                                 request = webrisk_v1.ComputeThreatListDiffRequest(
@@ -366,7 +383,6 @@ class WebRiskAPICaller:
 
 
     async def _verify_threat_with_api(self, url: str):
-        """Verify threat status directly with Web Risk API"""
         try:
             request = webrisk_v1.SearchUrisRequest(
                 uri=url,
