@@ -458,7 +458,7 @@ async def handle_messages(message, say):
                 blocks=[
                     {
                         "type": "section",
-                        "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! I flagged {result.get('url', "").replace(".", "[.]")} under the category {result.get('threat_types')} in your message! Please exercise caution when clicking said link!"},
+                        "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>! I flagged {result.get('url', '').replace('.', '[.]')} under the category {result.get('threat_types')} in your message! Please exercise caution when clicking said link!"},
                     }
                 ],
                 text=f"Hey there <@{message['user']}>!",
